@@ -1,0 +1,23 @@
+# Environment variables (Secrets & API Keys)
+.env
+.env.*
+!.env.example
+
+# Python Cache & Virtual Environments
+__pycache__/
+*.py[cod]
+*$py.class
+myenv/
+venv/
+ENV/
+
+# Jupyter Notebook Checkpoints
+.ipynb_checkpoints/
+
+# Project Downloads & Output Files
+downloads/
+received_documents.jsonl
+
+# Operating System Files
+.DS_Store
+Thumbs.db

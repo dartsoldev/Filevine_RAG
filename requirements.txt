@@ -1,0 +1,2 @@
+fastapi uvicorn
+langchain langchain-community pypdf requests
