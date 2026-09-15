@@ -1,2 +1,19 @@
-fastapi uvicorn
-langchain langchain-community pypdf requests
+fastapi
+uvicorn[standard]
+requests
+python-dotenv
+pydantic
+
+langchain
+langchain-community
+langchain-core
+langchain-text-splitters
+langchain-openai
+langchain-classic
+langchain-qdrant
+langgraph
+
+qdrant-client
+
+pypdf
+docx2txt
