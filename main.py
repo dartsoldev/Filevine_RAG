@@ -66,14 +66,13 @@ def list_pending_documents():
 @app.post("/chat", response_model=ChatResponse)
 def chat(request: ChatRequest):
     """
-    Runs the full agentic RAG pipeline (retrieve -> evaluate_docs -> generate/fallback)
+    Runs the chat pipeline (plan -> retrieve -> prepare_context -> respond)
     for a user's natural language question and returns the answer + source documents used.
     """
     try:
         result = rag_graph.invoke({
             "query": request.query,
             "messages": [],
-            "retry_count": 0,
         })
 
         used_docs = result.get("relevant_docs") or []
@@ -87,6 +86,7 @@ def chat(request: ChatRequest):
             for doc in used_docs
         ]
 
+        sources = list({tuple(source.items()): source for source in sources}.values())
         return ChatResponse(answer=result.get("generation", ""), sources=sources)
 
     except Exception as e:
@@ -115,7 +115,7 @@ def qdrant_status():
             "status": "connected",
             "collection": COLLECTION_NAME,
             "points_count": info.points_count,
-            "vectors_count": info.vectors_count,
+            "indexed_vectors_count": info.indexed_vectors_count,
         }
     except Exception as e:
         raise HTTPException(status_code=502, detail=f"Qdrant connection failed: {str(e)}")

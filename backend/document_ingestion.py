@@ -43,17 +43,18 @@ COLLECTION_NAME = "filevine-RAG"
 
 os.makedirs(DOWNLOAD_DIR, exist_ok=True)
 
-llm = ChatOpenAI(model="gpt-4o", temperature=0)
+llm = ChatOpenAI(model="gpt-5.4-mini", temperature=0)
+embeddings = OpenAIEmbeddings(model="text-embedding-3-large")
 
-base_embeddings = OpenAIEmbeddings(model="text-embedding-3-large")
-embedding_file_store = LocalFileStore("./embedding_cache/")
-embeddings = CacheBackedEmbeddings.from_bytes_store(
-    base_embeddings,
-    embedding_file_store,
-    namespace=base_embeddings.model,
-    query_embedding_cache=True,
-    key_encoder="blake2b",
-)
+#base_embeddings = OpenAIEmbeddings(model="text-embedding-3-large")
+#embedding_file_store = LocalFileStore("./embedding_cache/")
+#embeddings = CacheBackedEmbeddings.from_bytes_store(
+#    base_embeddings,
+#    embedding_file_store,
+#    namespace=base_embeddings.model,
+#    query_embedding_cache=True,
+#    key_encoder="blake2b",
+#)
 
 qdrant_client = QdrantClient(
     url=os.environ["QDRANT_URL"],
@@ -148,7 +149,7 @@ def process_document(record: dict) -> dict:
     # 4. Chunk
     text_splitter = RecursiveCharacterTextSplitter(
         chunk_size=800,
-        chunk_overlap=120,
+        chunk_overlap=150,
         separators=["\n\n", "\n", ". ", " ", ""],
     )
     chunks = text_splitter.split_documents(documents)
