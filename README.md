@@ -34,15 +34,16 @@ Triggered by the `/webhook/document` endpoint whenever Zapier sends a new docume
 Triggered by the `/chat` endpoint for every user question:
 
 ```
-START → retrieve → evaluate_docs
-                        ├── relevant docs found → generate → END
-                        ├── no relevant docs, retries left (<3) → retry (increases k) → retrieve
-                        └── retries exhausted → fallback (fixed safe message) → END
+START → plan ── conversation → respond → END
+           └── documents → retrieve → prepare_context → respond → END
 ```
 
-- **Self-query retriever**: parses the user's natural-language question into a semantic query + optional metadata filters (`client_name`, `doc_type`, `case_id`, `filename`, `received_at`) using an LLM, then searches Qdrant.
-- **evaluate_docs**: an LLM checks each retrieved chunk for actual relevance to the question — irrelevant chunks are dropped before generation, reducing hallucination.
-- **fallback**: after 3 failed retrieval attempts, returns a fixed "I don't have information on that" message instead of letting the LLM guess.
+- **Planner**: understands informal wording and separates greetings/small talk from document requests.
+- **Retriever**: compares existing metadata without case or whitespace sensitivity, then searches only matching point IDs. Explicit client/case constraints are never dropped. Filenames may omit the extension. No re-upload or database migration is required.
+- **Context**: passes retrieved passages and metadata directly to the answer model. A separate binary relevance gate no longer discards useful summary material. The answer model identifies which passages support its response.
+- **Response**: uses a friendly tone and the user's language, cites source files, and asks a focused clarification when evidence is missing. Sources are deduplicated.
+
+Metadata matching currently scans metadata pages for constrained searches. This is suitable for the current small collection; a large deployment should use indexed normalized payload fields with a backfill. Each `/chat` request is independent: conversation history/session memory is not persisted.
 
 ## Endpoints
 

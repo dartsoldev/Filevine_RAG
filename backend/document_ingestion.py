@@ -43,7 +43,7 @@ COLLECTION_NAME = "filevine-RAG"
 
 os.makedirs(DOWNLOAD_DIR, exist_ok=True)
 
-llm = ChatOpenAI(model="gpt-4o", temperature=0)
+llm = ChatOpenAI(model="gpt-5.4-mini", temperature=0)
 embeddings = OpenAIEmbeddings(model="text-embedding-3-large")
 
 #base_embeddings = OpenAIEmbeddings(model="text-embedding-3-large")
@@ -149,7 +149,7 @@ def process_document(record: dict) -> dict:
     # 4. Chunk
     text_splitter = RecursiveCharacterTextSplitter(
         chunk_size=800,
-        chunk_overlap=120,
+        chunk_overlap=150,
         separators=["\n\n", "\n", ". ", " ", ""],
     )
     chunks = text_splitter.split_documents(documents)
