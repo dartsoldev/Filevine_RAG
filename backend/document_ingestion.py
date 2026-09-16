@@ -44,16 +44,17 @@ COLLECTION_NAME = "filevine-RAG"
 os.makedirs(DOWNLOAD_DIR, exist_ok=True)
 
 llm = ChatOpenAI(model="gpt-4o", temperature=0)
+embeddings = OpenAIEmbeddings(model="text-embedding-3-large")
 
-base_embeddings = OpenAIEmbeddings(model="text-embedding-3-large")
-embedding_file_store = LocalFileStore("./embedding_cache/")
-embeddings = CacheBackedEmbeddings.from_bytes_store(
-    base_embeddings,
-    embedding_file_store,
-    namespace=base_embeddings.model,
-    query_embedding_cache=True,
-    key_encoder="blake2b",
-)
+#base_embeddings = OpenAIEmbeddings(model="text-embedding-3-large")
+#embedding_file_store = LocalFileStore("./embedding_cache/")
+#embeddings = CacheBackedEmbeddings.from_bytes_store(
+#    base_embeddings,
+#    embedding_file_store,
+#    namespace=base_embeddings.model,
+#    query_embedding_cache=True,
+#    key_encoder="blake2b",
+#)
 
 qdrant_client = QdrantClient(
     url=os.environ["QDRANT_URL"],
