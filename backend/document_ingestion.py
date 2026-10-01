@@ -43,7 +43,10 @@ COLLECTION_NAME = "filevine-RAG"
 
 os.makedirs(DOWNLOAD_DIR, exist_ok=True)
 
-llm = ChatOpenAI(model="gpt-5.4-mini", temperature=0)
+# Answering model: GPT-5.4 (OpenAI's everyday workhorse; strong grounding, half the price of GPT-5.5).
+# Planner model: GPT-5.4 mini is enough for intent/filter classification and keeps latency low.
+llm = ChatOpenAI(model="gpt-5.4", temperature=0)
+planner_llm = ChatOpenAI(model="gpt-5.4-mini", temperature=0)
 embeddings = OpenAIEmbeddings(model="text-embedding-3-large")
 
 #base_embeddings = OpenAIEmbeddings(model="text-embedding-3-large")

@@ -1,11 +1,12 @@
 import os
 import json
+import uuid
 import requests
 from datetime import datetime
 from fastapi import FastAPI, HTTPException
 from backend.schema import DocumentPayload, ChatRequest, ChatResponse
 from backend.document_ingestion import process_document, LOG_FILE, qdrant_client, COLLECTION_NAME
-from backend.graph import rag_graph
+from backend.graph import rag_graph, retriever
 
 app = FastAPI(title="Filevine RAG API")
 
@@ -31,6 +32,7 @@ async def receive_document(payload: DocumentPayload):
             f.write(json.dumps(record) + "\n")
 
         result = process_document(record)
+        retriever.invalidate_known_values()  # new client/doc type visible to the planner at once
 
         return {
             "success": True,
@@ -70,10 +72,11 @@ def chat(request: ChatRequest):
     for a user's natural language question and returns the answer + source documents used.
     """
     try:
-        result = rag_graph.invoke({
-            "query": request.query,
-            "messages": [],
-        })
+        session_id = request.session_id or uuid.uuid4().hex
+        result = rag_graph.invoke(
+            {"query": request.query},
+            config={"configurable": {"thread_id": session_id}},
+        )
 
         used_docs = result.get("relevant_docs") or []
         sources = [
@@ -87,7 +90,8 @@ def chat(request: ChatRequest):
         ]
 
         sources = list({tuple(source.items()): source for source in sources}.values())
-        return ChatResponse(answer=result.get("generation", ""), sources=sources)
+        return ChatResponse(answer=result.get("generation", ""), sources=sources,
+                            session_id=session_id)
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error generating response: {str(e)}")

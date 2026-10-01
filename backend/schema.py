@@ -9,8 +9,10 @@ class DocumentPayload(BaseModel):
 
 class ChatRequest(BaseModel):
     query: str
+    session_id: str | None = None   # send back the session_id from the previous reply to keep context
 
 
 class ChatResponse(BaseModel):
     answer: str
     sources: list[dict]
+    session_id: str
