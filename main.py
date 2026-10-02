@@ -4,11 +4,28 @@ import uuid
 import requests
 from datetime import datetime
 from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from backend.schema import DocumentPayload, ChatRequest, ChatResponse
 from backend.document_ingestion import process_document, LOG_FILE, qdrant_client, COLLECTION_NAME
 from backend.graph import rag_graph, retriever
 
 app = FastAPI(title="Filevine RAG API")
+
+# Browsers only let the frontend call this API from origins listed here.
+# Set ALLOWED_ORIGINS on the server as a comma-separated list, e.g.
+#   ALLOWED_ORIGINS=https://your-frontend.onrender.com,http://localhost:5173
+# Never use "*": this API serves confidential case documents.
+ALLOWED_ORIGINS = [
+    origin.strip().rstrip("/")
+    for origin in os.getenv("ALLOWED_ORIGINS", "http://localhost:5173").split(",")
+    if origin.strip()
+]
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=ALLOWED_ORIGINS,
+    allow_methods=["GET", "POST"],
+    allow_headers=["Content-Type"],
+)
 
 
 # ==========================================================================

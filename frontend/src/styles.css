@@ -1,0 +1,556 @@
+/* ---------------------------------------------------------------------------
+   Tokens
+   One neutral "paper" palette and a single navy accent. Every colour pair used
+   for text meets WCAG AA contrast in both themes.
+--------------------------------------------------------------------------- */
+:root {
+  --bg: #faf9f6;
+  --surface: #ffffff;
+  --ink: #1d1c1a;
+  --muted: #65625b;
+  --line: #e5e2da;
+  --line-strong: #cfcbc1;
+  --user-bg: #efede7;
+  --accent: #1f3a5f;
+  --accent-hover: #172d4a;
+  --on-accent: #ffffff;
+  --focus: #2f6fd0;
+  --notice-bg: #fbf1ee;
+  --notice-line: #e6c4bb;
+  --notice-ink: #7a2c1b;
+
+  --font: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --mono: ui-monospace, 'Cascadia Code', Consolas, Menlo, monospace;
+  --measure: 760px;
+  --gutter: 20px;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #151516;
+    --surface: #1c1c1e;
+    --ink: #ecebe7;
+    --muted: #a09d95;
+    --line: #2b2b2e;
+    --line-strong: #3d3d42;
+    --user-bg: #27272b;
+    --accent: #a9c4ea;
+    --accent-hover: #c2d6f2;
+    --on-accent: #10192a;
+    --focus: #8db4f5;
+    --notice-bg: #2a1c19;
+    --notice-line: #5a342b;
+    --notice-ink: #f0c2b6;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   Base
+--------------------------------------------------------------------------- */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  overflow: hidden; /* only the message thread scrolls */
+  background: var(--bg);
+  color: var(--ink);
+  font: 400 15.5px/1.6 var(--font);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+h1,
+h2,
+h3,
+p {
+  margin: 0;
+}
+
+button,
+textarea {
+  font: inherit;
+  color: inherit;
+}
+
+:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ---------------------------------------------------------------------------
+   Layout
+--------------------------------------------------------------------------- */
+.app {
+  display: flex;
+  flex-direction: column;
+  height: 100dvh;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex: none;
+  height: 56px;
+  padding: 0 var(--gutter);
+  background: var(--surface);
+  border-bottom: 1px solid var(--line);
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.brand-mark {
+  flex: none;
+  width: 10px;
+  height: 18px;
+  border-radius: 2px;
+  background: var(--accent);
+}
+
+.brand-name {
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: -0.005em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.thread {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: var(--line-strong) transparent;
+}
+
+.thread-inner {
+  /* Gutters sit outside the measure so the text column lines up with the composer. */
+  max-width: calc(var(--measure) + 2 * var(--gutter));
+  margin: 0 auto;
+  padding: 32px var(--gutter) 16px;
+}
+
+/* ---------------------------------------------------------------------------
+   Buttons
+--------------------------------------------------------------------------- */
+.button {
+  flex: none;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  padding: 7px 14px;
+  font-size: 14px;
+  font-weight: 550;
+  line-height: 1.4;
+  cursor: pointer;
+  transition: background-color 120ms ease, border-color 120ms ease, color 120ms ease;
+}
+
+.button:disabled {
+  cursor: default;
+  opacity: 0.45;
+}
+
+.button-primary {
+  background: var(--accent);
+  color: var(--on-accent);
+}
+
+.button-primary:not(:disabled):hover {
+  background: var(--accent-hover);
+}
+
+.button-secondary {
+  background: transparent;
+  border-color: var(--line-strong);
+}
+
+.button-secondary:hover {
+  background: var(--user-bg);
+}
+
+.button-quiet {
+  background: transparent;
+  border-color: var(--line);
+  color: var(--muted);
+  font-weight: 500;
+}
+
+.button-quiet:not(:disabled):hover {
+  border-color: var(--line-strong);
+  color: var(--ink);
+}
+
+/* ---------------------------------------------------------------------------
+   Empty state
+--------------------------------------------------------------------------- */
+.empty {
+  padding-top: min(12vh, 96px);
+}
+
+.empty-title {
+  font-size: 26px;
+  font-weight: 600;
+  line-height: 1.25;
+  letter-spacing: -0.015em;
+}
+
+.empty-lead {
+  max-width: 56ch;
+  margin-top: 10px;
+  color: var(--muted);
+}
+
+.starters {
+  list-style: none;
+  margin: 28px 0 0;
+  padding: 0;
+  border-top: 1px solid var(--line);
+}
+
+.starter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  width: 100%;
+  padding: 13px 2px;
+  background: none;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  text-align: left;
+  cursor: pointer;
+}
+
+.starter-arrow {
+  color: var(--muted);
+  transition: transform 120ms ease, color 120ms ease;
+}
+
+.starter:hover .starter-arrow {
+  color: var(--accent);
+  transform: translateX(3px);
+}
+
+/* ---------------------------------------------------------------------------
+   Messages
+--------------------------------------------------------------------------- */
+.message {
+  margin-bottom: 28px;
+}
+
+.message-user {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.bubble {
+  max-width: 85%;
+  padding: 9px 14px;
+  background: var(--user-bg);
+  border-radius: 14px 14px 4px 14px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+/* The answer reads like a document: no bubble, full measure. */
+.prose {
+  overflow-wrap: anywhere;
+}
+
+.prose > * {
+  margin: 0 0 0.75em;
+}
+
+.prose > :last-child {
+  margin-bottom: 0;
+}
+
+.prose h1,
+.prose h2,
+.prose h3,
+.prose h4 {
+  margin-top: 1.2em;
+  font-size: 1em;
+  font-weight: 650;
+}
+
+.prose ul,
+.prose ol {
+  padding-left: 1.3em;
+}
+
+.prose li + li {
+  margin-top: 0.25em;
+}
+
+.prose strong {
+  font-weight: 650;
+}
+
+.prose a {
+  color: var(--accent);
+  text-underline-offset: 2px;
+}
+
+.prose code {
+  padding: 0.1em 0.35em;
+  background: var(--user-bg);
+  border-radius: 4px;
+  font: 0.9em var(--mono);
+}
+
+.prose pre {
+  padding: 12px 14px;
+  background: var(--user-bg);
+  border-radius: 8px;
+  overflow-x: auto;
+}
+
+.prose pre code {
+  padding: 0;
+  background: none;
+}
+
+.prose table {
+  display: block;
+  max-width: 100%;
+  overflow-x: auto;
+  border-collapse: collapse;
+  font-size: 0.95em;
+}
+
+.prose th,
+.prose td {
+  padding: 6px 10px;
+  border: 1px solid var(--line);
+  text-align: left;
+}
+
+.prose blockquote {
+  padding-left: 12px;
+  border-left: 3px solid var(--line-strong);
+  color: var(--muted);
+}
+
+/* Caret at the end of the text while it is being printed. */
+.prose.is-revealing > :last-child:not(ul, ol)::after,
+.prose.is-revealing > :is(ul, ol):last-child > li:last-child::after {
+  content: '';
+  display: inline-block;
+  width: 7px;
+  height: 1.05em;
+  margin-left: 3px;
+  vertical-align: text-bottom;
+  background: var(--accent);
+  animation: blink 1s steps(2, start) infinite;
+}
+
+@keyframes blink {
+  to {
+    visibility: hidden;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   Sources
+--------------------------------------------------------------------------- */
+.sources {
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+}
+
+.sources-title {
+  margin-bottom: 6px;
+  color: var(--muted);
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.sources ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.source {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 2px 10px;
+  padding: 3px 0;
+  font-size: 13.5px;
+}
+
+.source-file {
+  font-weight: 550;
+  overflow-wrap: anywhere;
+}
+
+.source-meta {
+  color: var(--muted);
+}
+
+/* ---------------------------------------------------------------------------
+   Pending and error states
+--------------------------------------------------------------------------- */
+.pending {
+  color: var(--muted);
+}
+
+.pending-note {
+  margin-top: 4px;
+  font-size: 13.5px;
+}
+
+.dots span {
+  animation: dot 1.2s infinite both;
+}
+
+.dots span:nth-child(2) {
+  animation-delay: 0.2s;
+}
+
+.dots span:nth-child(3) {
+  animation-delay: 0.4s;
+}
+
+@keyframes dot {
+  0%,
+  60%,
+  100% {
+    opacity: 0.2;
+  }
+  30% {
+    opacity: 1;
+  }
+}
+
+.notice {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px 16px;
+  padding: 12px 14px;
+  background: var(--notice-bg);
+  border: 1px solid var(--notice-line);
+  border-radius: 10px;
+  color: var(--notice-ink);
+}
+
+.notice .button-quiet {
+  border-color: var(--notice-line);
+  color: var(--notice-ink);
+}
+
+/* ---------------------------------------------------------------------------
+   Composer
+--------------------------------------------------------------------------- */
+.composer-area {
+  flex: none;
+  padding: 8px var(--gutter) 14px;
+}
+
+.composer {
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+  max-width: var(--measure);
+  margin: 0 auto;
+  padding: 8px 8px 8px 14px;
+  background: var(--surface);
+  border: 1px solid var(--line-strong);
+  border-radius: 12px;
+  transition: border-color 120ms ease, box-shadow 120ms ease;
+}
+
+.composer:focus-within {
+  border-color: var(--focus);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--focus) 22%, transparent);
+}
+
+.composer textarea {
+  flex: 1;
+  min-width: 0;
+  padding: 6px 0;
+  background: transparent;
+  border: 0;
+  outline: none; /* the focus ring is drawn on .composer via :focus-within */
+  resize: none;
+  line-height: 1.5;
+}
+
+.composer textarea::placeholder {
+  color: var(--muted);
+}
+
+.composer-hint {
+  max-width: var(--measure);
+  margin: 8px auto 0;
+  color: var(--muted);
+  font-size: 12.5px;
+  text-align: center;
+}
+
+/* ---------------------------------------------------------------------------
+   Small screens and motion preferences
+--------------------------------------------------------------------------- */
+@media (max-width: 560px) {
+  :root {
+    --gutter: 14px;
+  }
+
+  .thread-inner {
+    padding-top: 20px;
+  }
+
+  .empty-title {
+    font-size: 22px;
+  }
+
+  .bubble {
+    max-width: 92%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+}

@@ -160,3 +160,24 @@ If `session_id` is omitted on every request, each question is handled independen
 - The `embedding_cache/` folder should **not** be deleted casually — it saves OpenAI API costs on repeated runs.
 - `downloads/` and `received_documents.jsonl` are self-cleaning: once a document is successfully processed, its local file and log entry are removed automatically.
 - Session memory lives in the server process. For multi-worker or multi-instance deployments, swap `MemorySaver` for a persistent LangGraph checkpointer (e.g. Postgres/Redis).
+
+## Frontend
+
+A React chat interface lives in [`frontend/`](frontend/README.md).
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+It opens on http://localhost:5173 and talks to the deployed API through a dev proxy.
+
+For a deployed frontend, set `ALLOWED_ORIGINS` in the backend's environment to the
+frontend's origin (comma-separated for several), for example:
+
+```env
+ALLOWED_ORIGINS=https://your-frontend.onrender.com,http://localhost:5173
+```
+
+The default is `http://localhost:5173`. Do not use `*`.
