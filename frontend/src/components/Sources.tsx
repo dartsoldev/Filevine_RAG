@@ -1,4 +1,5 @@
 import type { Source } from '../types'
+import { FileIcon } from './Icons'
 
 interface SourcesProps {
   sources: Source[]
@@ -18,8 +19,13 @@ export function Sources({ sources }: SourcesProps) {
 
           return (
             <li key={`${source.filename}-${source.case_id}-${index}`} className="source">
-              <span className="source-file">{source.filename ?? 'Untitled document'}</span>
-              {details.length > 0 && <span className="source-meta">{details.join(' · ')}</span>}
+              <span className="source-icon">
+                <FileIcon />
+              </span>
+              <span className="source-text">
+                <span className="source-file">{source.filename ?? 'Untitled document'}</span>
+                {details.length > 0 && <span className="source-meta">{details.join(' · ')}</span>}
+              </span>
             </li>
           )
         })}

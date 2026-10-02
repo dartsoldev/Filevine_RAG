@@ -1,38 +1,51 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { ApiError, sendChat } from '../api'
 import { REQUEST_TIMEOUT_MS } from '../config'
-import type { ChatMessage } from '../types'
+import type { ChatMessage, Conversation } from '../types'
 
-const STORAGE_KEY = 'case-files-assistant.conversation.v1'
+const STORAGE_KEY = 'aravana-case-assistant.conversations.v2'
+const MAX_CONVERSATIONS = 30
+const TITLE_LENGTH = 48
 
-interface StoredConversation {
-  sessionId: string | null
-  messages: ChatMessage[]
+interface Stored {
+  conversations: Conversation[]
+  activeId: string | null
 }
 
-/** The conversation survives a reload but not a closed tab (sessionStorage). */
-function loadConversation(): StoredConversation {
+/**
+ * Conversations live in sessionStorage: they survive a reload and are gone when
+ * the tab closes. Case details should not linger on a shared computer.
+ */
+function load(): Stored {
   try {
     const raw = sessionStorage.getItem(STORAGE_KEY)
     if (raw) {
-      const parsed = JSON.parse(raw) as Partial<StoredConversation>
-      const messages = Array.isArray(parsed.messages)
-        ? parsed.messages.filter((m) => m.state === 'done')
-        : []
-      return { sessionId: parsed.sessionId ?? null, messages }
+      const parsed = JSON.parse(raw) as Partial<Stored>
+      const conversations = (Array.isArray(parsed.conversations) ? parsed.conversations : [])
+        .map((c) => ({ ...c, messages: c.messages.filter((m) => m.state === 'done') }))
+        .filter((c) => c.messages.length > 0)
+      const activeId = conversations.some((c) => c.id === parsed.activeId)
+        ? (parsed.activeId ?? null)
+        : null
+      return { conversations, activeId }
     }
   } catch {
-    // Storage unavailable or corrupted: start with an empty conversation.
+    // Storage unavailable or corrupted: start fresh.
   }
-  return { sessionId: null, messages: [] }
+  return { conversations: [], activeId: null }
 }
 
-function saveConversation(conversation: StoredConversation) {
+function save(stored: Stored) {
   try {
-    sessionStorage.setItem(STORAGE_KEY, JSON.stringify(conversation))
+    sessionStorage.setItem(STORAGE_KEY, JSON.stringify(stored))
   } catch {
     // Private mode or quota: the chat still works, it just will not survive a reload.
   }
+}
+
+function makeTitle(query: string): string {
+  const line = query.replace(/\s+/g, ' ').trim()
+  return line.length > TITLE_LENGTH ? `${line.slice(0, TITLE_LENGTH).trimEnd()}…` : line
 }
 
 function describeError(error: unknown, timedOut: boolean): string {
@@ -48,13 +61,18 @@ function describeError(error: unknown, timedOut: boolean): string {
 }
 
 export function useChat() {
-  const initial = useRef(loadConversation()).current
-  const [messages, setMessages] = useState<ChatMessage[]>(initial.messages)
+  const initial = useRef(load()).current
+  const [conversations, setConversations] = useState<Conversation[]>(initial.conversations)
+  const [activeId, setActiveId] = useState<string | null>(initial.activeId)
   const [busy, setBusy] = useState(false)
   /** Text for screen readers, set once per completed answer or error. */
   const [announcement, setAnnouncement] = useState('')
 
-  const sessionId = useRef<string | null>(initial.sessionId)
+  // Latest values for callbacks that outlive a render (requests, timers).
+  const conversationsRef = useRef(conversations)
+  conversationsRef.current = conversations
+  const activeRef = useRef(activeId)
+  activeRef.current = activeId
   const busyRef = useRef(false)
   const request = useRef<{ controller: AbortController; cancelled: boolean } | null>(null)
 
@@ -64,78 +82,127 @@ export function useChat() {
   }
 
   useEffect(() => {
-    saveConversation({
-      sessionId: sessionId.current,
-      messages: messages.filter((m) => m.state === 'done'),
+    save({
+      activeId,
+      conversations: conversations
+        .map((c) => ({ ...c, messages: c.messages.filter((m) => m.state === 'done') }))
+        .filter((c) => c.messages.length > 0),
     })
-  }, [messages])
+  }, [conversations, activeId])
 
-  const patch = (id: string, changes: Partial<ChatMessage>) =>
-    setMessages((list) => list.map((m) => (m.id === id ? { ...m, ...changes } : m)))
+  const updateConversation = (id: string, change: (c: Conversation) => Conversation) =>
+    setConversations((list) => list.map((c) => (c.id === id ? change(c) : c)))
 
-  const ask = useCallback(async (query: string, replyId: string) => {
-    markBusy(true)
-    const current = { controller: new AbortController(), cancelled: false }
-    request.current = current
-    let timedOut = false
-    const timer = window.setTimeout(() => {
-      timedOut = true
-      current.controller.abort()
-    }, REQUEST_TIMEOUT_MS)
+  const patchMessage = (conversationId: string, messageId: string, changes: Partial<ChatMessage>) =>
+    updateConversation(conversationId, (c) => ({
+      ...c,
+      messages: c.messages.map((m) => (m.id === messageId ? { ...m, ...changes } : m)),
+    }))
 
-    try {
-      const data = await sendChat(query, sessionId.current, current.controller.signal)
-      if (data.session_id) sessionId.current = data.session_id
-      const answer = data.answer.trim() || 'No answer was returned for this question.'
-      patch(replyId, { text: answer, sources: data.sources, state: 'revealing' })
-      setAnnouncement(answer)
-      // Still busy: the answer is being printed. finishReveal() releases the composer.
-    } catch (error) {
-      if (current.cancelled) {
-        setMessages((list) => list.filter((m) => m.id !== replyId))
-      } else {
-        const text = describeError(error, timedOut)
-        patch(replyId, { text, state: 'error' })
-        setAnnouncement(text)
+  const ask = useCallback(
+    async (conversationId: string, sessionId: string | null, query: string, replyId: string) => {
+      markBusy(true)
+      const current = { controller: new AbortController(), cancelled: false }
+      request.current = current
+      let timedOut = false
+      const timer = window.setTimeout(() => {
+        timedOut = true
+        current.controller.abort()
+      }, REQUEST_TIMEOUT_MS)
+
+      try {
+        const data = await sendChat(query, sessionId, current.controller.signal)
+        const answer = data.answer.trim() || 'No answer was returned for this question.'
+        updateConversation(conversationId, (c) => ({
+          ...c,
+          sessionId: data.session_id || c.sessionId,
+          messages: c.messages.map((m) =>
+            m.id === replyId
+              ? { ...m, text: answer, sources: data.sources, state: 'revealing' }
+              : m,
+          ),
+        }))
+        setAnnouncement(answer)
+        // Still busy: the answer is being printed. finishReveal() releases the composer.
+      } catch (error) {
+        if (current.cancelled) {
+          updateConversation(conversationId, (c) => ({
+            ...c,
+            messages: c.messages.filter((m) => m.id !== replyId),
+          }))
+        } else {
+          const text = describeError(error, timedOut)
+          patchMessage(conversationId, replyId, { text, state: 'error' })
+          setAnnouncement(text)
+        }
+        markBusy(false)
+      } finally {
+        window.clearTimeout(timer)
+        if (request.current === current) request.current = null
       }
-      markBusy(false)
-    } finally {
-      window.clearTimeout(timer)
-      if (request.current === current) request.current = null
-    }
-  }, [])
+    },
+    [],
+  )
 
   const send = useCallback(
     (raw: string) => {
       const query = raw.trim()
       if (!query || busyRef.current) return
+
       const replyId = crypto.randomUUID()
-      setMessages((list) => [
-        ...list.filter((m) => m.state !== 'error'),
+      const turn: ChatMessage[] = [
         { id: crypto.randomUUID(), role: 'user', text: query, state: 'done' },
         { id: replyId, role: 'assistant', text: '', state: 'pending' },
-      ])
-      void ask(query, replyId)
+      ]
+
+      const existing = conversationsRef.current.find((c) => c.id === activeRef.current)
+      if (existing) {
+        updateConversation(existing.id, (c) => ({
+          ...c,
+          messages: [...c.messages.filter((m) => m.state !== 'error'), ...turn],
+        }))
+        void ask(existing.id, existing.sessionId, query, replyId)
+        return
+      }
+
+      const created: Conversation = {
+        id: crypto.randomUUID(),
+        title: makeTitle(query),
+        sessionId: null,
+        messages: turn,
+      }
+      setConversations((list) => [created, ...list].slice(0, MAX_CONVERSATIONS))
+      setActiveId(created.id)
+      void ask(created.id, null, query, replyId)
     },
     [ask],
   )
 
-  /** Re-sends the last question after a failure. */
+  /** Re-sends the last question of the open conversation after a failure. */
   const retry = useCallback(() => {
     if (busyRef.current) return
-    const lastQuestion = [...messages].reverse().find((m) => m.role === 'user')
-    if (!lastQuestion) return
+    const conversation = conversationsRef.current.find((c) => c.id === activeRef.current)
+    const lastQuestion = conversation && [...conversation.messages].reverse().find((m) => m.role === 'user')
+    if (!conversation || !lastQuestion) return
     const replyId = crypto.randomUUID()
-    setMessages((list) => [
-      ...list.filter((m) => m.state !== 'error'),
-      { id: replyId, role: 'assistant', text: '', state: 'pending' },
-    ])
-    void ask(lastQuestion.text, replyId)
-  }, [ask, messages])
+    updateConversation(conversation.id, (c) => ({
+      ...c,
+      messages: [
+        ...c.messages.filter((m) => m.state !== 'error'),
+        { id: replyId, role: 'assistant', text: '', state: 'pending' },
+      ],
+    }))
+    void ask(conversation.id, conversation.sessionId, lastQuestion.text, replyId)
+  }, [ask])
 
-  /** Called by the message once its text is fully printed. */
-  const finishReveal = useCallback((id: string) => {
-    patch(id, { state: 'done' })
+  /** Called by a message once its text is fully printed. */
+  const finishReveal = useCallback((messageId: string) => {
+    setConversations((list) =>
+      list.map((c) => ({
+        ...c,
+        messages: c.messages.map((m) => (m.id === messageId ? { ...m, state: 'done' } : m)),
+      })),
+    )
     markBusy(false)
   }, [])
 
@@ -146,23 +213,60 @@ export function useChat() {
       request.current.controller.abort()
       return
     }
-    setMessages((list) =>
-      list.map((m) => (m.state === 'revealing' ? { ...m, state: 'done' } : m)),
+    setConversations((list) =>
+      list.map((c) =>
+        c.messages.some((m) => m.state === 'revealing')
+          ? { ...c, messages: c.messages.map((m) => (m.state === 'revealing' ? { ...m, state: 'done' } : m)) }
+          : c,
+      ),
     )
     markBusy(false)
   }, [])
 
-  /** Starts a new conversation: the server keeps no link to the old session id. */
-  const reset = useCallback(() => {
-    if (request.current) {
-      request.current.cancelled = true
-      request.current.controller.abort()
-    }
-    sessionId.current = null
-    setMessages([])
-    setAnnouncement('')
-    markBusy(false)
-  }, [])
+  /** Opens another conversation. Anything still in progress is stopped first. */
+  const select = useCallback(
+    (id: string) => {
+      if (id === activeRef.current) return
+      stop()
+      setAnnouncement('')
+      setActiveId(id)
+    },
+    [stop],
+  )
 
-  return { messages, busy, announcement, send, retry, stop, reset, finishReveal }
+  /** Shows the empty "new chat" screen; the conversation is created on the first question. */
+  const startNew = useCallback(() => {
+    stop()
+    setAnnouncement('')
+    setActiveId(null)
+  }, [stop])
+
+  const remove = useCallback(
+    (id: string) => {
+      if (id === activeRef.current) {
+        stop()
+        setActiveId(null)
+      }
+      setConversations((list) => list.filter((c) => c.id !== id))
+    },
+    [stop],
+  )
+
+  const active = conversations.find((c) => c.id === activeId) ?? null
+
+  return {
+    conversations,
+    activeId,
+    title: active?.title ?? null,
+    messages: active?.messages ?? [],
+    busy,
+    announcement,
+    send,
+    retry,
+    stop,
+    select,
+    startNew,
+    remove,
+    finishReveal,
+  }
 }

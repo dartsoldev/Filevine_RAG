@@ -27,3 +27,11 @@ export interface ChatMessage {
   state: MessageState
   sources?: Source[]
 }
+
+/** One chat in the sidebar. `sessionId` is the server-side memory key for it. */
+export interface Conversation {
+  id: string
+  title: string
+  sessionId: string | null
+  messages: ChatMessage[]
+}

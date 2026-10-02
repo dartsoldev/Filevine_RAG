@@ -1,8 +1,9 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import Markdown from 'react-markdown'
 import { SLOW_NOTICE_MS } from '../config'
 import { useReveal } from '../hooks/useReveal'
 import type { ChatMessage } from '../types'
+import { CheckIcon, CopyIcon } from './Icons'
 import { Sources } from './Sources'
 
 interface MessageProps {
@@ -29,7 +30,7 @@ export function Message({ message, onRevealed, onRetry }: MessageProps) {
     return (
       <div className="message notice" role="alert">
         <p>{message.text}</p>
-        <button type="button" className="button button-quiet" onClick={onRetry}>
+        <button type="button" className="button-outline" onClick={onRetry}>
           Try again
         </button>
       </div>
@@ -60,10 +61,41 @@ function Answer({ message, onRevealed }: Pick<MessageProps, 'message' | 'onRevea
           {visibleText}
         </Markdown>
       </div>
-      {!revealing && message.sources && message.sources.length > 0 && (
-        <Sources sources={message.sources} />
+
+      {!revealing && (
+        <>
+          {message.sources && message.sources.length > 0 && <Sources sources={message.sources} />}
+          <div className="actions">
+            <CopyButton text={message.text} />
+          </div>
+        </>
       )}
     </article>
+  )
+}
+
+function CopyButton({ text }: { text: string }) {
+  const [copied, setCopied] = useState(false)
+  const timer = useRef(0)
+
+  useEffect(() => () => window.clearTimeout(timer.current), [])
+
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(text)
+      setCopied(true)
+      window.clearTimeout(timer.current)
+      timer.current = window.setTimeout(() => setCopied(false), 1800)
+    } catch {
+      // Clipboard blocked (permissions or insecure context): leave the button as it is.
+    }
+  }
+
+  return (
+    <button type="button" className="action" onClick={copy}>
+      {copied ? <CheckIcon /> : <CopyIcon />}
+      <span aria-live="polite">{copied ? 'Copied' : 'Copy'}</span>
+    </button>
   )
 }
 
@@ -78,12 +110,8 @@ function Pending() {
   return (
     <div className="message pending">
       <p className="pending-line">
+        <span className="pulse" aria-hidden="true" />
         Searching the case files
-        <span className="dots" aria-hidden="true">
-          <span>.</span>
-          <span>.</span>
-          <span>.</span>
-        </span>
       </p>
       {slow && (
         <p className="pending-note">

@@ -1,4 +1,5 @@
 import { forwardRef, useImperativeHandle, useLayoutEffect, useRef, type KeyboardEvent } from 'react'
+import { ArrowUpIcon, StopIcon } from './Icons'
 
 interface ComposerProps {
   value: string
@@ -12,7 +13,7 @@ export interface ComposerHandle {
   focusAtEnd: () => void
 }
 
-const MAX_HEIGHT_PX = 180
+const MAX_HEIGHT_PX = 200
 
 export const Composer = forwardRef<ComposerHandle, ComposerProps>(function Composer(
   { value, onChange, onSubmit, onStop, busy },
@@ -49,42 +50,36 @@ export const Composer = forwardRef<ComposerHandle, ComposerProps>(function Compo
   }
 
   return (
-    <footer className="composer-area">
-      <form
-        className="composer"
-        onSubmit={(event) => {
-          event.preventDefault()
-          onSubmit()
-        }}
-      >
-        <label htmlFor="question" className="visually-hidden">
-          Your question
-        </label>
-        <textarea
-          id="question"
-          ref={textarea}
-          rows={1}
-          value={value}
-          onChange={(event) => onChange(event.target.value)}
-          onKeyDown={onKeyDown}
-          placeholder="Ask about a client or case"
-          dir="auto"
-          autoFocus
-        />
-        {busy ? (
-          <button type="button" className="button button-secondary" onClick={onStop}>
-            Stop
-          </button>
-        ) : (
-          <button type="submit" className="button button-primary" disabled={!value.trim()}>
-            Send
-          </button>
-        )}
-      </form>
-      <p className="composer-hint">
-        Enter to send, Shift + Enter for a new line. Check important details against the source
-        document.
-      </p>
-    </footer>
+    <form
+      className="composer"
+      onSubmit={(event) => {
+        event.preventDefault()
+        onSubmit()
+      }}
+    >
+      <label htmlFor="question" className="visually-hidden">
+        Your question. Press Enter to send, Shift and Enter for a new line.
+      </label>
+      <textarea
+        id="question"
+        ref={textarea}
+        rows={1}
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        onKeyDown={onKeyDown}
+        placeholder="Ask about a client or case"
+        dir="auto"
+        autoFocus
+      />
+      {busy ? (
+        <button type="button" className="send" onClick={onStop} aria-label="Stop">
+          <StopIcon />
+        </button>
+      ) : (
+        <button type="submit" className="send" disabled={!value.trim()} aria-label="Send message">
+          <ArrowUpIcon />
+        </button>
+      )}
+    </form>
   )
 })

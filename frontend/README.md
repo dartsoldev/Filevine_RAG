@@ -1,4 +1,4 @@
-# Case Files Assistant (frontend)
+# Aravana Law Case Assistant (frontend)
 
 A small React chat interface for the Filevine RAG API. One page: ask a question about a
 client or case, read the answer, see which documents it came from.
@@ -46,22 +46,24 @@ src/
 ├── api.ts                   the only file that talks to the backend (POST /chat)
 ├── types.ts                 shared types
 ├── hooks/
-│   ├── useChat.ts           conversation state: send, retry, stop, reset, session id
+│   ├── useChat.ts           conversations: send, retry, stop, switch, delete, session ids
 │   ├── useReveal.ts         prints an answer progressively, word by word
 │   └── useStickToBottom.ts  keeps the thread scrolled to the newest text
 ├── components/
-│   ├── Header.tsx           title and "New conversation"
-│   ├── EmptyState.tsx       first-screen guidance and starter prompts
-│   ├── Message.tsx          user bubble, answer, pending and error states
+│   ├── Sidebar.tsx          Aravana Law brand, "New chat", recent chats (drawer on mobile)
+│   ├── EmptyState.tsx       new-chat greeting and starter prompts
+│   ├── Message.tsx          user bubble, answer, copy button, pending and error states
 │   ├── Sources.tsx          documents an answer was drawn from
-│   └── Composer.tsx         message box (Enter sends, Shift+Enter adds a line)
+│   ├── Composer.tsx         message box (Enter sends, Shift+Enter adds a line)
+│   └── Icons.tsx            inline SVG icons
 └── styles.css               all styling; colours and sizes are CSS variables at the top
 ```
 
-**Conversation memory.** The backend returns a `session_id` with every answer. The app
-sends it back with the next question so follow-ups ("the second one", "same for medical
-bills") keep their context. The id and the messages live in `sessionStorage`: they survive
-a reload and disappear when the tab closes. "New conversation" drops the id.
+**Conversation memory.** The backend returns a `session_id` with every answer. Each chat in
+the sidebar keeps its own id and sends it back with the next question, so follow-ups ("the
+second one", "same for medical bills") keep their context. Chats live in `sessionStorage`:
+they survive a reload and disappear when the tab closes, so case details do not linger on a
+shared computer.
 
 **Answer printing.** `POST /chat` returns the whole answer in one JSON response, so the
 progressive printing is done in the browser (`useReveal`). If the backend later exposes a
